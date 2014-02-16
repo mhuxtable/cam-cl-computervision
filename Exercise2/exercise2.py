@@ -5,16 +5,16 @@ import cv2, numpy as np, os
 
 # Exercise 2.1 ----------------------------------------------------------------------
 
-# TODO finish this for exercise 2.1.a
 def ComputeGradients(image):
 
   # Define the kernels
-  # TODO
-  dxKernel = np.array([[1]], dtype='float32')
-  dyKernel = np.array([[1]], dtype='float32')
-  dx2Kernel = np.array([[1]], dtype='float32')
-  dy2Kernel = np.array([[1]], dtype='float32')
-  laplacianKernel = np.array([[1]], dtype='float32')
+  dxKernel = np.array([[-1, 1]], dtype='float32')
+  dyKernel = np.array([[-1],[1]], dtype='float32')
+  dx2Kernel = np.array([[1,-2,1]], dtype='float32')
+  dy2Kernel = np.array([[1],[-2],[1]], dtype='float32')
+  laplacianKernel = np.array([[-1,-2,-1],
+                              [-2,12,-2],
+							  [-1,-2,-1]], dtype='float32')
 
   # Apply the kernels to the image
   dx = cv2.filter2D(image, cv2.CV_32F, dxKernel)
@@ -24,37 +24,37 @@ def ComputeGradients(image):
   laplacian = cv2.filter2D(image, cv2.CV_32F, laplacianKernel)
 
   # Calculate the gradient magniture
-  # TODO
-  gradMag = np.zeros_like(image)
+  gradMag = np.sqrt(np.square(dx) + np.square(dy))
   
   return dx, dy, gradMag, dx2, dy2, laplacian
 
-# TODO finish this for exercise 2.1.b
 def ComputeEdges(dx, dy, gradientMagnitude):
+  dx = abs(dx)
+  dy = abs(dy)
+  gradientMagnitude = abs(gradientMagnitude)
 
-  # TODO: Threshold the images at magnitude over 0.075.
-  dxEdges = dx
-  dyEdges = dy
-  gradientMagnitudeEdges = gradientMagnitude
+  ret, dxEdges = cv2.threshold(dx, 0.075, 1, cv2.THRESH_BINARY)
+  ret, dyEdges = cv2.threshold(dy, 0.075, 1, cv2.THRESH_BINARY)
+  ret, gradientMagnitudeEdges = cv2.threshold(gradientMagnitude, 0.075, 1, cv2.THRESH_BINARY) 
   
   return dxEdges, dyEdges, gradientMagnitudeEdges
 
-# TODO finish this for exercise 2.1.c
 def ComputeCanny(image):
 
-  # TODO: Compute Canny edges (using second-order gradient).
-
-  return image
+  out = cv2.Canny(abs(image), 56, 255)
+  return out
 
 # Exercise 2.2 ----------------------------------------------------------------------
 
-# TODO finish for exercise 2.2
+# This result shows the causal ordering of the edges, in that no new edges seem to be
+# introduced as the Guassian is made larger, which is good as it confirms no new edges
+# get spuriously introduced which were not already there before!
 def scaleSpaceEdges(image):
 
   # calculating gaussians of an image
-  gauss1 = image;
-  gauss2 = image;
-  gauss3 = image;
+  gauss1 = cv2.GaussianBlur(image, (0,0), 1)
+  gauss2 = cv2.GaussianBlur(image, (0,0), 1.6)
+  gauss3 = cv2.GaussianBlur(image, (0,0), 2.56);
 
   # calculate the edges using code from previous exercises
   dx1, dy1, gradMag1 = ComputeGradients(image)[:3]
@@ -71,19 +71,19 @@ def scaleSpaceEdges(image):
   return gauss1, gauss2, gauss3, dxEdges1, dyEdges1, gradEdges1, dxEdges2, dyEdges2, gradEdges2, dxEdges3, dyEdges3, gradEdges3, dxEdges4, dyEdges4, gradEdges4
 
 # Exercise 2.3 ----------------------------------------------------------------------
-
-# TODO finish for exercise 2.3
+# For two different Gaussians, their difference approximates a Laplacian, allowing
+# them to be used perhaps in the Laplacian's place by simply blurring one image some
+# more and then taking the difference -- the so-called DoG pyramid.
+# Indeed, in the limit, the DoG is just the Laplacian operator.
 def DifferenceOfGaussiansLaplacian(gauss1, gauss2, gauss3):
 
   # Calculate the Laplacian of gauss1 and gauss2
-  # TODO
-  Laplacian1 = np.zeros_like(gauss1)
-  Laplacian2 = np.zeros_like(gauss1)
+  Laplacian1 = cv2.Laplacian(gauss1, 5)
+  Laplacian2 = cv2.Laplacian(gauss2, 5)
 
   # Calculate the difference of gaussians
-  # TODO
-  DoG1 = np.zeros_like(gauss1)
-  DoG2 = np.zeros_like(gauss1)
+  DoG1 = gauss2 - gauss1
+  DoG2 = gauss3 - gauss2
   
   return Laplacian1, Laplacian2, DoG1, DoG2
 
@@ -363,6 +363,8 @@ if __name__ == '__main__':
     print "Exercise 2.1.b: gradient magnitude edges CORRECT"
   else:
     print "Exercise 2.1.b: gradient magnitude edges INCORRECT"
+    show("My grad mag", gradmagedges_student)
+    show("Their grad mag", gradmagedges_correct)
     
   # No check for Canny
   
