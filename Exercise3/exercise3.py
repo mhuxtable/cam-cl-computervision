@@ -6,12 +6,14 @@ import cv2, numpy as np
 def extract_features_and_descriptors(image):
 
   ## Convert image to grayscale (for SURF detector).
-  ## TODO: 
+  image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
   
   ## Detect SURF features and compute descriptors.
-  ## TODO
   keypoints = []
   descriptors = []
+
+  keypoints = detect_features(image)
+  descriptors = extract_descriptors(image, keypoints)
   
   return (keypoints, descriptors)
   
@@ -36,23 +38,52 @@ def find_correspondences(keypoints1, descriptors1, keypoints2, descriptors2):
   ## Look up corresponding keypoints.
   points1 = []
   points2 = []
-  ## TODO
-  for kp1 in keypoints1:
-    points1.append(kp1.pt)
-  for kp2 in keypoints2:
-    points2.append(kp2.pt)
+  
+  for (match1, match2) in match:
+    points1.append(keypoints1[match1].pt)
+    points2.append(keypoints2[match2].pt)
 
   return (points1, points2)
 
+def get_warped_coords(homography, w, h):
+  coords = [[w],[h],[1]]
+  warped = homography * np.matrix(coords)
+  warped[0] = warped[0] / warped[2]
+  warped[1] = warped[1] / warped[2]
+  return warped
 
 ## ---------------------------------------------------------------------
 ## 3.3  Calculate the size and offset of the stitched panorama. --------
 def calculate_size(size_image1, size_image2, homography):
   
   ## Calculate the size and offset of the stitched panorama.
-  ## TODO: (Overwrite the following 2 lines with your answer.)
-  offset = (10, 10)
-  size   = (1400, 800)
+
+  # this probably has issues with negative results which I've not addressed, but
+  # would need some simple if statements to catch those cases and bring back up
+  # to 0 if/when this occurred
+
+  # use homography to get the co-ords of top right and bottom right of image 2
+  # after the perspective transform is applied. Divide by the weight to get the
+  # actual co-ordinates, then check which one is wider to take forward is the overall
+  # width for the panorama
+  image2_topleft = get_warped_coords(homography, 0, 0)
+  image2_topright = get_warped_coords(homography, size_image2[1], 0)
+  image2_bottomleft = get_warped_coords(homography, 0, size_image2[0])
+  image2_bottomright = get_warped_coords(homography, size_image2[1], size_image2[0])
+
+  offset = [0, 0]
+
+  if (image2_topleft[1] > 0):
+      offset[1] = image2_topleft[1]
+
+  image2_warped = [0, 0]
+  if (image2_bottomright[0] > image2_topright[0]):
+      image2_warped[0] = image2_bottomright[0]
+  else:
+      image2_warped[0] = image2_topright[0]
+  image2_warped[1] = image2_bottomright[1]
+
+  size = (image2_warped[0] + offset[0], image2_warped[1] + offset[1])
   
   ## Update the homography to shift by the offset
   homography[0,2] += offset[0]
@@ -66,8 +97,7 @@ def calculate_size(size_image1, size_image2, homography):
 def merge_images(image1, image2, homography, size, offset, keypoints):
 
   ## Combine the two images into one.
-  ## TODO
-  panorama = np.zeros((size[1], size[0], 3), np.uint8)  
+  panorama = cv2.warpPerspective(image2, homography, size)
   
   place_image(panorama, image1, offset[0], offset[1])
 
@@ -164,7 +194,7 @@ if __name__ == "__main__":
   print len(keypoints2), "features detected in image2"
   
   show("Image1 features", cv2.drawKeypoints(image1, keypoints1, color=(0,0,255)))
-  show("Image2 features", cv2.drawKeypoints(image2, keypoints1, color=(0,0,255)))
+  show("Image2 features", cv2.drawKeypoints(image2, keypoints2, color=(0,0,255)))
   
   ## Find corresponding features.
   points1, points2 = find_correspondences(keypoints1, descriptors1, keypoints2, descriptors2)
