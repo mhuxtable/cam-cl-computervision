@@ -75,6 +75,10 @@ def calculate_size(size_image1, size_image2, homography):
 
   if (image2_topleft[1] > 0):
       offset[1] = image2_topleft[1]
+  if (image2_bottomleft[0] < image2_topleft[0]):
+	  offset[0] = -image2_topleft[0] + image2_bottomleft[0]
+
+  print offset
 
   image2_warped = [0, 0]
   if (image2_bottomright[0] > image2_topright[0]):
@@ -98,7 +102,7 @@ def merge_images(image1, image2, homography, size, offset, keypoints):
 
   ## Combine the two images into one.
   panorama = cv2.warpPerspective(image2, homography, size)
-  
+ 
   place_image(panorama, image1, offset[0], offset[1])
 
   return panorama
