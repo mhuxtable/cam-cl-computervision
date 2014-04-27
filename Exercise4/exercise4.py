@@ -1,3 +1,4 @@
+# vim: tabstop=2:expandtab:ai:shiftwidth=2:
 # -*- coding: utf-8 -*-
 import cv2, numpy as np
 
@@ -5,11 +6,13 @@ import cv2, numpy as np
 def CallNaiveBayes(trainData, trainLabels, testData):
 
   ## Create a Naive (normal) Bayes Classifier
-  ## TODO
+  classifier = cv2.NormalBayesClassifier()
+  classifier.train(trainData, trainLabels)
   
   ## Use classifier to predict the test data
   ## TODO: (Overwrite the following line with your answer.)
-  predictions = np.zeros((testData.shape[0], 1), np.float32)
+  retval, predictions = classifier.predict(testData)
+  #predictions = np.zeros((testData.shape[0], 1), np.float32)
 
   return predictions
 
@@ -18,8 +21,15 @@ def CallNaiveBayes(trainData, trainLabels, testData):
 def ReduceDimensionality(trainData, testData):
 
   ## Reduce the dimensionality of the data.
-  ## TODO
-  return trainData, testData
+  mean, eigenvecs = cv2.PCACompute(trainData)
+  
+  # Looks like keeping ~50 eigenvectors is about the most optimal classification for
+  # the ocr10 dataset.
+  mean, eigenvecs = cv2.PCACompute(trainData, mean, eigenvecs, 50)
+  projectTraining = cv2.PCAProject(trainData, mean, eigenvecs)
+  projectTest     = cv2.PCAProject(testData,  mean, eigenvecs)
+
+  return projectTraining, projectTest
 
 
 
